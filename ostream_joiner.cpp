@@ -5,55 +5,51 @@
 #include <iterator>
 using namespace std;
 
-// This might be a useful class to provide too
-struct counter {
-  counter(int b = 0, char const *pref = "\n", char const *suf = ". ") : pref(pref), current(b), suf(suf) {}
-  char const *pref;
-  int current;
-  char const *suf;
-  inline friend ostream &operator<<(ostream &os, counter &c) {
-    os << c.pref;
-    os << c.current << c.suf;
-    c.current++;
-    return os;
-  }
-};
-
-
-
-
 int
 main()
 {
 
 	vector<int> fib = { 0, 1, 1, 2, 3, 5, 8, 13, 21};
+	vector<string> hello = { "hello", "world" };
     vector<int> empty;
-    // Three ways to print a parenthesized vector
-    // N4257
+ 
+	// Prints (0, 1, 1, 2, 3, 5, 8, 13, 21)
 	cout << "(";
 	copy(fib.begin(), fib.end(), make_ostream_joiner(cout, ", "));
 	cout << ")" << endl;
-    // Passing the open and close parentheses 
+
+    // Prints (0, 1, 1, 2, 3, 5, 8, 13, 21) 
     copy(fib.begin(), fib.end(), make_ostream_joiner(cout, "(", ", ", ")"));
     cout << endl;
-    // Forcing the closer to be printed at a specific time (like with a mutex or unique_ptr)
+
+    // Prints (0, 1, 1, 2, 3, 5, 8, 13, 21)
     auto oj = make_ostream_joiner(cout, "(", ", ", ")");
     copy(fib.begin(), fib.end(), oj);
     oj.release(); 
     cout << endl;
-    // Counting
-    copy(fib.begin(), fib.end(), make_ostream_joiner(cout, counter(1), prefix));
+
+    // Prints a counted list
+	// 1. hello
+	// 2. world
+	copy(hello.begin(), hello.end(), make_ostream_joiner(cout, ostream_counter{}, prefix));
     cout << endl;
-    // The next two have the same output
+
+    // Prints | 0 | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 |
     copy(fib.begin(), fib.end(), make_ostream_joiner(cout, " | ", " | ", " | "));
     cout << endl;
+
+	// Also prints | 0 | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 |
     copy(fib.begin(), fib.end(), make_ostream_joiner(cout, " | ", prefix | suffix));
     cout << endl;
-    // But these two show why that aren't redundant
+
+    // Prints | | 
     copy(empty.begin(), empty.end(), make_ostream_joiner(cout, " | ", " | ", " | ")); // prints | |
     cout << endl;
+
+	// Prints nothing
     copy(empty.begin(), empty.end(), make_ostream_joiner(cout, " | ", prefix | suffix)); // prints nothing
     cout << endl;
+
     // This behave the same as ostream_iterator
     copy(fib.begin(), fib.end(), make_ostream_joiner(cout, ", ", suffix));
     cout << endl;

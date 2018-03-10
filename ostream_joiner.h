@@ -5,21 +5,20 @@
 #include <string>
 #include <utility>
 #include <type_traits>
-#include <boost/optional.hpp>
+#include <optional>
 
-namespace boost {
   
   namespace detail {
     struct no_close {};
-    template<typename T> struct oj_close : public boost::optional <T> {
+    template<typename T> struct oj_close : public std::optional <T> {
       oj_close() = default;
-      oj_close(T const &t) : boost::optional<T>(t) {}
-      oj_close(T &&t) : boost::optional<T>(t) {}
+      oj_close(T const &t) : std::optional<T>(t) {}
+      oj_close(T &&t) : std::optional<T>(t) {}
       template<typename charT, typename traits>
       void close(std::basic_ostream<charT, traits> &os) {
         if (*this)
-          os << this->get();
-        *static_cast<boost::optional<T> *>(this) = boost::none;
+          os << this->value();
+        this->reset();
       }
     };
     template<> struct oj_close <no_close> {
@@ -52,14 +51,14 @@ namespace boost {
   
       if (first()) {
         if (flags & prefix)
-          os << del;
+          *osp << del;
         clear_first();
       } else if (!(flags & suffix)) {
-        os << del;
+        *osp << del;
       }
-      os << value;
+      *osp << value;
       if (flags & suffix)
-        os << del;
+        *osp << del;
       return *this;
     }
 
@@ -67,39 +66,43 @@ namespace boost {
     self& operator++() { return *this; }
     self& operator++(int) { return *this; }
 
-    ostream_joiner(ostream_joiner const &other) : flags(other.flags), os(other.os), del(other.del) {}
-    ostream_joiner(ostream_type &os, DelimT &&del, char flags = 0) : os(os), del(del), flags(1 | flags) {}
-    ostream_joiner(ostream_type &os, DelimT const &del, char flags = 0) : os(os), del(del), flags(1 | flags) {}
+    ostream_joiner(ostream_joiner const &other) : flags(other.flags), osp(other.osp), del(other.del) {}
+    ostream_joiner(ostream_type &os, DelimT &&del, char flags = 0) : osp(&os), del(del), flags(1 | flags) {}
+    ostream_joiner(ostream_type &os, DelimT const &del, char flags = 0) : osp(&os), del(del), flags(1 | flags) {}
     template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT const &close, char flags = 0) : detail::oj_close<CloseT>(close), os(os), del(del), flags(1 | flags) {
+    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT const &close, char flags = 0) 
+		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
+      *os << open;
+    }
+    template<typename OpenT>
+    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT &&close, char flags = 0) 
+		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
       os << open;
     }
     template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT &&close, char flags = 0) : detail::oj_close<CloseT>(close), os(os), del(del), flags(1 | flags) {
+    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT const &close, char flags = 0) 
+		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
       os << open;
     }
     template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT const &close, char flags = 0) : detail::oj_close<CloseT>(close), os(os), del(del), flags(1 | flags) {
-      os << open;
-    }
-    template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT &&close, char flags = 0) : detail::oj_close<CloseT>(close), os(os), del(del), flags(1 | flags) {
+    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT &&close, char flags = 0)
+		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
       os << open;
     }
 
     void release() {
-      this->close(os);
+      this->close(*osp);
     }
 
     ~ostream_joiner() {
-      this->close(os);
+      this->close(*osp);
     }
 
   private:
     bool first() { return flags & 1; }
     void clear_first() { flags &= ~1; }
     char flags;
-    ostream_type &os;
+    ostream_type *osp;
     DelimT del;
 
   };
@@ -116,5 +119,17 @@ namespace boost {
     return { os, std::forward<OpenT>(open), std::forward<DelimT>(delimiter), std::forward<CloseT>(close), flags};
   }
 
-}
+  struct ostream_counter {
+	  ostream_counter(int b = 1, char const *pref = "\n", char const *suf = ". ") : pref(pref), current(b), suf(suf) {}
+	  char const *pref;
+	  int current;
+	  char const *suf;
+	  template <typename charT, typename traits>
+	  inline friend std::basic_ostream<charT, traits> &operator<<(std::basic_ostream<charT, traits> &os, ostream_counter &c) {
+		  os << c.pref;
+		  os << c.current << c.suf;
+		  c.current++;
+		  return os;
+	  }
+  };
 #endif
