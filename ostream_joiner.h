@@ -107,17 +107,11 @@
 
   };
 
-  template <class charT, class traits, class DelimT>
-  ostream_joiner<typename std::decay<DelimT>::type, charT, traits> make_ostream_joiner(std::basic_ostream<charT, traits>& os, DelimT &&delimiter, char flags = 0)
-  {
-    return{ os, std::forward<DelimT>(delimiter), flags};
-  }
+  template<typename charT, typename traits, typename DelimT>
+  ostream_joiner(std::basic_ostream<charT, traits> &, DelimT, char flags = 0)->ostream_joiner<DelimT, charT, traits>;
 
   template <class charT, class traits, class OpenT, class DelimT, class CloseT>
-  ostream_joiner<typename std::decay<DelimT>::type, charT, traits, typename std::decay<CloseT>::type> make_ostream_joiner(std::basic_ostream<charT, traits>& os, OpenT &&open, DelimT  &&delimiter, CloseT &&close, char flags = 0)
-  {
-    return { os, std::forward<OpenT>(open), std::forward<DelimT>(delimiter), std::forward<CloseT>(close), flags};
-  }
+  ostream_joiner(std::basic_ostream<charT, traits> &, OpenT, DelimT, CloseT, char flags = 0)->ostream_joiner<DelimT, charT, traits, CloseT>;
 
   struct ostream_counter {
 	  ostream_counter(int b = 1, char const *pref = "\n", char const *suf = ". ") : pref(pref), current(b), suf(suf) {}
