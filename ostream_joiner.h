@@ -6,7 +6,7 @@
 #include <utility>
 #include <type_traits>
 #include <optional>
-
+#include <tuple>
   
   namespace detail {
     struct no_close {};
@@ -70,24 +70,9 @@
     ostream_joiner(ostream_type &os, DelimT &&del, char flags = 0) : osp(&os), del(del), flags(1 | flags) {}
     ostream_joiner(ostream_type &os, DelimT const &del, char flags = 0) : osp(&os), del(del), flags(1 | flags) {}
     template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT const &close, char flags = 0) 
-		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
-      *os << open;
-    }
-    template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT &&del, CloseT &&close, char flags = 0) 
-		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
-      os << open;
-    }
-    template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT const &close, char flags = 0) 
-		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
-      os << open;
-    }
-    template<typename OpenT>
-    ostream_joiner(ostream_type &os, OpenT const &open, DelimT const &del, CloseT &&close, char flags = 0)
-		: detail::oj_close<CloseT>(close), osp(&os), del(del), flags(1 | flags) {
-      os << open;
+    ostream_joiner(ostream_type &os, std::tuple<OpenT, DelimT, CloseT> const &t) 
+		: detail::oj_close<CloseT>(std::get<2>(t)), osp(&os), del(std::get<1>(t)), flags(1) {
+      *os << std::get<0>(t);
     }
 
     void release() {
@@ -111,10 +96,10 @@
   ostream_joiner(std::basic_ostream<charT, traits> &, DelimT, char flags = 0)->ostream_joiner<DelimT, charT, traits>;
 
   template <class charT, class traits, class OpenT, class DelimT, class CloseT>
-  ostream_joiner(std::basic_ostream<charT, traits> &, OpenT, DelimT, CloseT, char flags = 0)->ostream_joiner<DelimT, charT, traits, CloseT>;
+  ostream_joiner(std::basic_ostream<charT, traits> &, std::tuple<OpenT, DelimT, CloseT>)->ostream_joiner<DelimT, charT, traits, CloseT>;
 
-  struct ostream_counter {
-	  ostream_counter(int b = 1, char const *pref = "\n", char const *suf = ". ") : pref(pref), current(b), suf(suf) {}
+  struct counting_delimiter {
+	  counting_delimiter(int b = 1, char const *pref = "\n", char const *suf = ". ") : pref(pref), current(b), suf(suf) {}
 	  char const *pref;
 	  int current;
 	  char const *suf;

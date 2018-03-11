@@ -19,11 +19,11 @@ main()
 	cout << ")" << endl;
 
     // Prints (0, 1, 1, 2, 3, 5, 8, 13, 21) 
-    copy(fib.begin(), fib.end(), ostream_joiner(cout, "(", ", ", ")"));
+	copy(fib.begin(), fib.end(), ostream_joiner(cout, tuple{ "(", ", ", ")" }));
     cout << endl;
 
     // Prints (0, 1, 1, 2, 3, 5, 8, 13, 21)
-    auto oj = ostream_joiner(cout, "(", ", ", ")");
+	auto oj = ostream_joiner(cout, tuple{ "(", ", ", ")" });
     copy(fib.begin(), fib.end(), oj);
     oj.release(); 
     cout << endl;
@@ -31,11 +31,11 @@ main()
     // Prints a counted list
 	// 1. hello
 	// 2. world
-	copy(hello.begin(), hello.end(), ostream_joiner(cout, ostream_counter{}, prefix));
+	copy(hello.begin(), hello.end(), ostream_joiner(cout, counting_delimiter{}, prefix));
     cout << endl;
 
     // Prints | 0 | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 |
-    copy(fib.begin(), fib.end(), ostream_joiner(cout, " | ", " | ", " | "));
+	copy(fib.begin(), fib.end(), ostream_joiner(cout, tuple{ " | ", " | ", " | " }));
     cout << endl;
 
 	// Also prints | 0 | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 |
@@ -43,11 +43,11 @@ main()
     cout << endl;
 
     // Prints | | 
-    copy(empty.begin(), empty.end(), ostream_joiner(cout, " | ", " | ", " | ")); // prints | |
+	copy(empty.begin(), empty.end(), ostream_joiner(cout, tuple{ " | ", " | ", " | " })); 
     cout << endl;
 
 	// Prints nothing
-    copy(empty.begin(), empty.end(), ostream_joiner(cout, " | ", prefix | suffix)); // prints nothing
+    copy(empty.begin(), empty.end(), ostream_joiner(cout, " | ", prefix | suffix)); 
     cout << endl;
 
     // This behave the same as ostream_iterator
