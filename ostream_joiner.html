@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0095)http://wiki.edg.com/twiki/pub/Wg21rapperswil2014/LibraryEvolutionWorkingGroup/N4007_updated.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+
+  
+  <style type="text/css">
+.comment { color: #999999; font-style: italic; }
+.pre { color: #000099; }
+.string { color: #009900; }
+.char { color: #009900; }
+.float { color: #996600; }
+.int { color: #999900; }
+.bool { color: #000000; font-weight: bold; }
+.type { color: #FF6633; }
+.flow { color: #FF0000; }
+.keyword { color: #990000; }
+.operator { color: #663300; font-weight: bold; }
+.operator { color: #663300; font-weight: bold; }
+pre.code {
+    border: 2px solid #666;
+    background-color: #F4F4F4;
+    padding-left: 10px;
+    padding-top: 0px;
+}
+code {
+    border: 2px solid #d0d0d0;
+    background-color: LightYellow;
+    padding: 2px;
+    padding-left: 10px;
+    display:table;
+    white-space:pre;
+    margin:2px;
+    margin-bottom:10px;
+}
+dt
+{
+    font-weight: bold;
+}
+    
+.ins {
+    background-color:#A0FFA0;
+}
+
+.del {
+    background-color:#FFA0A0;
+    text-decoration:line-through
+}    
+  </style>
+  <title>ostream_joiner</title>
+
+  
+<style type="text/css"></style></head>
+<body>
+<p>N4257<br>
+Revision of N4257<br>
+2018-10-07<br>
+Mike Spertus, Symantec<br>
+<a href="mailto:mike_spertus@symantec.com">mike_spertus@symantec.com</a><br>
+Nathan Wilson<br>
+<a href="mailto:nwilson20@gmail.com">nwilson20@gmail.com</a><br>
+<br></p>
+<h1><tt>ostream_joiner</tt></h1>
+<h2>Summary</h2>
+This paper updates the <tt>ostream_joiner</tt> proposal to reflect experience
+    in Library Fundamentals V2 and changes in the core language since then.
+    Specifically, we add a deduction guide to ensure that <tt>ostream_joiner</tt>
+    is constructed correctly from a C string literal. Secondly, we were able to take
+    advantage of the library fundamentals process to identify
+    three enhancements based on experience.
+    <ul><li>Replacing <tt>make_ostream_joiner</tt> with a deduction guide</li>
+    <li>Allowing the placement of the delimiter to be 
+    specified in accordance to support some common uses cases</li>
+    <li>We add a &ldquo;counting&rdquo; I/O manipulator that makes it
+        easy to support the common use case of generating numbered lists.
+<blockquote><pre>Fritos Ingredients:
+    1. Corn
+    2. Corn oil
+    3. Salt</pre></blockquote></li>
+    <li>Allowing the initial, infix, and suffix initializers to be different,
+        as this allows programming in a more functional/STL/ranges style
+        in what we have found to be the most common use case in our programming:
+<blockquote><pre>(1, 2, 3, 4)</pre></blockquote></li></ul>
+All of the above changes are implemented and exercised on <a href="https://wandbox.org/permlink/RGHtkCqVZeCF7Qb2">Wandbox</a>.
+We leave ship vehicle to the committee
+<h2>Deduction guides</h2>
+With the addition of class template argument deduction in C++17, it seems desirable
+to get rid of the clumsy <tt>make_ostream_joiner</tt> as we did with class templates
+    like <tt>boyer_moore_searcher</tt>. However, as Nathan Myers has pointed out,
+    without any deduction guide, the decision to take the delimiter by reference
+    means that<code>ostream_joiner j(cout, ", ");</code>
+    produces a compile time error as the delimiter type is deduced as <tt>char const[3]</tt>.
+    To fix this, add the following to the end of the class definition for ostream_joiner
+<blockquote><pre>};
+
+<span class="ins">template&lt;class DelimT, class CharT, class Traits&gt;
+ostream_joiner(std::basic_ostream&lt;CharT, Traits&gt;, _Delim) -&gt; ostream_joiner&lt;Delim, CharT, Traits&gt;;</span></pre></blockquote>
+
+We feel this change is certainly compatible with moving <tt>ostream_joiner</tt> into C++20.
+However, we note that doing so without the other changes may create ABI challenges for
+adding the other changes proposed in this paper below.
+<h2>Delimiter type</h2>
+It is already somewhat odd to have to use <tt>ostream_iterator</tt> whan a suffix delimiter
+is desired but <tt>ostream_joiner</tt> when an infix iterator is desired. Furthermore,
+our experience exercising this in practice is that we also often find ourselves wanting
+a prefix delimiter, which is not directly supported with either class, to generate output like the following:
+<blockquote><pre>Fritos Ingredients:
+    * Corn
+    * Corn oil
+    * Salt</pre></blockquote>
+We therefore propose allowing a consistent approach to all these cases by
+    adding an additional  parameter of type
+<code>enum class delimiter { prefix, infix, suffix, all };</code>
+that defaults to <tt>delimiter::infix</tt>, so there is no source breakage to 
+usage of <tt>ostream_joiner</tt>. In particular, the above list can
+    be easily generated with
+<code>copy(ingredients.begin(), ingredients.end(), ostream_joiner(cout, "\\n* ", delimiter::prefix));</code>
+We have also found that it is very common to output numbered lists (indeed, unnumbered and
+    numbered lists are given equal prominence in Word, HTML, etc.), which
+is easy with a counting IO manipulator which generates the numbered ingredient list
+at the top of the page.
+<code>copy(ingredients.begin(), ingredients.end(), ostream_joiner(cout, counter(1), delimiter::prefix));</code>
+The bikeshed <tt>counter</tt> has the following declaration, where the contained value is
+iterated on each insertion
+<code>template&lt;class before, class after&gt;
+struct counter {
+  counter(int value = 0, before b = "\n", after e = ". ");
+  <span class="comment">/* ... */</span>
+};</code>
+<h2>Multiple delimiters</h2>
+As we have found that we most commonly want print different delimiters before and after a list, we
+    always find it clumsy, and a break from our preferred STL/functional/range-inspired style
+    to invariably have to write code like:
+<code>// Surprisingly hard to print (a, b, c)
+cout  &lt;&lt;  "(";
+copy(v.begin(), v.end(), ostream_joiner(cout, ", "));
+cout &lt;&lt; ")";
+</code>
+just to print <tt>(a, b, c)</tt>. Indeed, in any engineering or graphics code where points
+or vectors are being printed, it is easy to imagine this tripling the size of the
+logging code!
+<p>To handle this, we also allow three delimiters to be passed into the constructor as
+    follows</p><code>// Now prints (a, b, c) directly
+copy(v.begin(), v.end(), ostream_joiner(cout, "(", ", ", ")");
+</code>
+This is accomplished with an additional constructor as follows:
+
+<code>template&lt;typename DelimT, typename charT, typename traits, typename CloseT = <span class="comment"><em>implementation-defined</em></span>&gt;
+class ostream_joiner { 
+public:
+    <span class="comment">/* ... */</span>
+    template&lt;typename OpenT&gt;
+    ostream_joiner(ostream_type &amp;os, OpenT open, DelimT del, CloseT);
+    <span class="comment">/* ... */</span>
+</code>
+Note the following:
+<ul><li>There is no need for a <tt>delimiter</tt> flag because each type of delimiter is
+    passed in the constructor</li>
+    <li>There are no concerns about ambiguities in overload resolution as it is the only four argument constructor.</li>
+    <li>The open delimiter type is not part of the class template parameters
+    because it is output on construction and then discarded.</li>
+<li>To apply the copy/move paradigm that we currently are, there would
+be eight variants of the above constructor taking both const and rvalue
+references independently for each parameter. We are not opposed to that,
+but did not show it above for clarity of presentation.</li>
+<li>To make this work, only the original <tt>ostream_joiner</tt> prints
+the closing delimiter when it is destroyed, so copies made in STL algorithms
+do not prematurely close the list. Although this makes <tt>ostream_joiner</tt>
+no longer be a <tt>Regular</tt> type, we feel that is ok because not
+all types need to be regular. In particular, we have find this to be natural
+and easy-to-use in practice as shown above and in additional examples shown on
+    <a href="https://wandbox.org/permlink/RGHtkCqVZeCF7Qb2">wandbox</a>,
+    not unlike scoped locks.</li>
+<li>If it is desired to output the closing delimiter before the end of scope, we  provide
+a <tt>complete()</tt> method for that purpose. We did not provide a <tt>release()</tt> method
+due to lack of use cases but could easily do so if desired.</li>
+</ul>
+    </body></html>
