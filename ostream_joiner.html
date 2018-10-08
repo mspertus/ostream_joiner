@@ -120,7 +120,7 @@ We have also found that it is very common to output numbered lists (indeed, unnu
 is easy with a counting IO manipulator which generates the numbered ingredient list
 at the top of the page.
 <code>copy(ingredients.begin(), ingredients.end(), ostream_joiner(cout, counter(1), delimiter::prefix));</code>
-We also propose a  <tt>counter</tt> (bikeshed) class template with the following declaration, where the contained value is
+where we also propose the  <tt>counter</tt> (bikeshed) class template with the following declaration, where the contained value is
 iterated on each insertion (preceded by the <tt>before</tt> and followed by the <tt>after</tt>)
 <code>template&lt;class before, class after&gt;
 struct counter {
