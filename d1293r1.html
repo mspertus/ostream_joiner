@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0095)http://wiki.edg.com/twiki/pub/Wg21rapperswil2014/LibraryEvolutionWorkingGroup/N4007_updated.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+
+  
+  <style type="text/css">
+.comment { color: #999999; font-style: italic; }
+.pre { color: #000099; }
+.string { color: #009900; }
+.char { color: #009900; }
+.float { color: #996600; }
+.int { color: #999900; }
+.bool { color: #000000; font-weight: bold; }
+.type { color: #FF6633; }
+.flow { color: #FF0000; }
+.keyword { color: #990000; }
+.operator { color: #663300; font-weight: bold; }
+.operator { color: #663300; font-weight: bold; }
+pre.code {
+    border: 2px solid #666;
+    background-color: #F4F4F4;
+    padding-left: 10px;
+    padding-top: 0px;
+}
+code {
+    border: 2px solid #d0d0d0;
+    background-color: LightYellow;
+    padding: 2px;
+    padding-left: 10px;
+    display:table;
+    white-space:pre;
+    margin:2px;
+    margin-bottom:10px;
+}
+dt
+{
+    font-weight: bold;
+}
+    
+.ins {
+    background-color:#A0FFA0;
+}
+
+.del {
+    background-color:#FFA0A0;
+    text-decoration:line-through
+}    
+  </style>
+  <title>ostream_joiner</title>
+
+  
+<style type="text/css"></style></head>
+<body>
+<p>D1293R1<br>
+Revision of P1293R0<br>
+2018-11-07<br>
+Mike Spertus, Symantec<br>
+<a href="mailto:mike_spertus@symantec.com">mike_spertus@symantec.com</a><br>
+Nathan Wilson<br>
+<a href="mailto:nwilson20@gmail.com">nwilson20@gmail.com</a><br>
+<br></p>
+<h1><tt>ostream_joiner</tt></h1>
+<h2>Summary</h2>
+This paper updates the <tt>ostream_joiner</tt> proposal to reflect experience
+    in Library Fundamentals V2 and changes in the core language since then.
+    Specifically, we add a deduction guide to ensure that <tt>ostream_joiner</tt>
+    is constructed correctly from a C string literal and remove the now-redundant
+    <tt>make_ostream_joiner</tt>. 
+<h2>Deduction guides</h2>
+With the addition of class template argument deduction in C++17, it seems desirable
+to get rid of the clumsy <tt>make_ostream_joiner</tt> as we did with class templates
+    like <tt>boyer_moore_searcher</tt>. However, as Nathan Myers has pointed out,
+    without any deduction guide, the decision to take the delimiter by reference
+    means that<code>ostream_joiner j(cout, ", ");</code>
+    produces a compile time error as the delimiter type is deduced as <tt>char const[3]</tt>.
+    To fix this, add the following to the end of the class definition for ostream_joiner
+<h3>Wording</h3>
+Wording is relative to Library Fundamentals v2.
+    In iterator.synopsis, remove the following
+    <blockquote><pre> template &lt;class DelimT, class charT = char, class traits = char_traits&lt;charT> >
+      class ostream_joiner;
+  <span class="del">template &lt;class charT, class traits, class DelimT>
+    ostream_joiner&lt;decay_t&t;DelimT>, charT, traits>
+    make_ostream_joiner(basic_ostream&lt;charT, traits>&amp; os, DelimT&amp;&amp; delimiter);</span></pre></blockquote>
+    At the end of the definition of class <tt>ostream_joiner</tt> in iterator.ostream.joiner,
+    add the following.
+<blockquote><pre>};
+
+<span class="ins">template&lt;class DelimT, class CharT, class Traits&gt;
+ostream_joiner(std::basic_ostream&lt;CharT, Traits&gt;, _Delim) -&gt; ostream_joiner&lt;Delim, CharT, Traits&gt;;</span></pre></blockquote>
+Remove the iterator.ostream.joiner.creation section
+<blockquote>
+<span class="del">ostream_joiner creation function [iterator.ostream.joiner.creation]
+<pre>
+<span class="del">template &lt;class charT, class traits, class DelimT>
+ostream_joiner&lt;decay_t&lt;DelimT>, charT, traits>
+make_ostream_joiner(basic_ostream&lt;charT, traits>&amp; os, DelimT&amp;&amp; delimiter);
+
+</span></pre><em>Returns</em>:
+<pre>    <span class="del">ostream_joiner&lt;decay_t&lt;DelimT>, charT, traits>(os, forward&lt;DelimT>(delimiter));</span>
+
+</pre></span></blockquote>
+    </body></html>
