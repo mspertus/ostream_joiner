@@ -70,8 +70,10 @@ Target: Library Evolution, Library</p><br>
 <h2>Status update</h2>
 This paper provides wording for 
 	merging into C++20 <tt>ostream_joiner</tt> with the CTAD-related changes below.
-	While this paper introduces nothing new technically, some clarification
-	of the polling is required if we are to advance this proposal to Library Working Group for C++20<p>
+	In addition, we have updated the specification as suggested by Casey Carter to meet
+	the requirements of C++20 output iterators as described below.<p>
+	The main purpose of assigning this revision to LEWG is to clarify LEWG polling
+	from San Diego<p>
 	The following LEWG straw polls from San Diego provide support for merging <tt>ostream_joiner</tt>
 	in C++20
 <blockquote>
@@ -127,11 +129,8 @@ However, as there was a previous poll
 <td bgcolor="#edf4f9" valign="top"> 0 </td>
 <td bgcolor="#edf4f9" valign="top"> 1 </td>
 </tr></table></blockquote>
-We would like confirmation from LEWG whether the poll to prioritize ostream_joiner
-	as per the TS + above ctor change for C++20 (No later than Kona) applies in this light
-	or if an additional poll should be taken.
-	In either case, we do plan to explore this solution space in a post-ranges
-	future.
+Based on the above, we propose to merge as above but continue to explore the
+design space post-ranges.
 <p/>
 <h2>Summary</h2>
 This paper updates the <tt>ostream_joiner</tt> proposal to reflect experience
@@ -148,9 +147,12 @@ to get rid of the clumsy <tt>make_ostream_joiner</tt> as we did with class templ
     produces a compile time error as the delimiter type is deduced as <tt>char const[3]</tt>.
     To fix this, add the following to providing the following deduction guide
 	<code>template&lt;class DelimT, class CharT, class Traits&gt;
-ostream_joiner(basic_ostream&lt;CharT, Traits&gt;, DelimT) -&gt; ostream_joiner&lt;DelimT, CharT, Traits&gt;;</code>
-
-<h3>Wording</h3>
+ostream_joiner(basic_ostream&lt;CharT, Traits&gt;&amp;, DelimT) -&gt; ostream_joiner&lt;DelimT, CharT, Traits&gt;;</code>
+<h2>C++20 iterator requirements</h2>
+C++20 output iterators are required to be default constructible, so the wording
+below adds a (useless) default constructor and requires the delimiter type to be
+Semiregular at Casey Carter's suggestion.
+<h2>Wording</h2>
 	Based on the above, we propose applying the following wording to the C++20 working draft.
 	Modifications to Library Fundamentals TS v2 are as given in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1293r1.html">P1293</a>.<br/><br/>
  Modify iterator.synopsis as follows
@@ -161,12 +163,13 @@ ostream_joiner(basic_ostream&lt;CharT, Traits&gt;, DelimT) -&gt; ostream_joiner&
   class ostream_joiner;</ins>
 </pre></blockquote>
  Add a subsection before iterator.range as follows<blockquote><b>22.6.5&nbsp;Class template <tt>ostream_joiner</tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iterator.ostream.joiner</b><br/>
-<tt>ostream_joiner</tt> writes (using <tt>operator&lt;&lt;</tt>) successive elements onto the output stream from which it was constructed. The delimiter that it was constructed with is written to the stream between every two Ts that are written. It is not possible to get a value out of the output iterator. Its only use is as an output iterator in situations like 
+<tt>ostream_joiner</tt> writes (using <tt>operator&lt;&lt;</tt>) successive elements onto the output stream from which it was constructed. The delimiter that it was constructed with is written to the stream between every two <tt>T</tt>s that are written. It is not possible to get a value out of the output iterator. Its only use is as an output iterator in situations like 
 <blockquote><pre>while (first != last)
   *result++ = *first++;</pre></blockquote>
 
 <tt>ostream_joiner</tt> is defined as
-<blockquote><pre>template &lt;class DelimT, class charT = char, class traits = char_traits&lt;charT> >
+<blockquote><pre>template &lt;class DelimT, class charT = char, class traits = char_traits&lt;charT>>
+  requires Semiregular&lt;DelimT&gt;
 class ostream_joiner {
 public:
   using char_type = charT;
@@ -174,10 +177,11 @@ public:
   using ostream_type = basic_ostream&lt;charT, traits>;
   using iterator_category = output_iterator_tag;
   using value_type = void;
-  using difference_type = void;
+  using difference_type = ptrdiff_t;
   using pointer = void;
   using reference = void;
 
+  ostream_joiner() = default;
   ostream_joiner(ostream_type&amp; s, const DelimT&amp; delimiter);
   ostream_joiner(ostream_type&amp; s, DelimT&amp;&amp; delimiter);
   template&lt;typename T>
@@ -186,18 +190,18 @@ public:
   ostream_joiner&amp; operator++() noexcept;
   ostream_joiner&amp; operator++(int) noexcept;
 private:
-  ostream_type* out_stream; // exposition only
+  ostream_type* out_stream = nullptr; // exposition only
   DelimT delim;             // exposition only
-  bool first_element;       // exposition only
+  bool first_element = true;       // exposition only
 };
   
 template&lt;class DelimT, class CharT, class Traits&gt;
-ostream_joiner(basic_ostream&lt;CharT, Traits&gt;, DelimT) -&gt; ostream_joiner&lt;DelimT, CharT, Traits&gt;;</pre></blockquote>
+ostream_joiner(basic_ostream&lt;CharT, Traits&gt;&amp;, DelimT) -&gt; ostream_joiner&lt;DelimT, CharT, Traits&gt;;</pre></blockquote>
 <b>22.6.5.1&nbsp; <tt>ostream_joiner</tt> constructor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iterator.ostream.joiner.cons</b><br/>
 <pre>ostream_joiner(ostream_type&amp; s, const DelimT&amp; delimiter);</pre>
-	<blockquote><em>Effects: </em>Initializes <tt>out_stream</tt> with <tt>std::addressof(s)</tt>, <tt>delim</tt> with <tt>delimiter</tt>, and <tt>first_element</tt> with <tt>true</tt>. </blockquote>
+	<blockquote><em>Effects: </em>Initializes <tt>out_stream</tt> with <tt>addressof(s)</tt>, <tt>delim</tt> with <tt>delimiter</tt>, and <tt>first_element</tt> with <tt>true</tt>. </blockquote>
 <pre>ostream_joiner(ostream_type&amp; s, DelimT&amp;&amp; delimiter);</pre>
-	<blockquote><em>Effects: </em>Initializes <tt>out_stream</tt> with <tt>std::addressof(s)</tt>, <tt>delim</tt> with <tt>move(delimiter)</tt>, and <tt>first_element</tt> with <tt>true</tt>. </blockquote>
+	<blockquote><em>Effects: </em>Initializes <tt>out_stream</tt> with <tt>addressof(s)</tt>, <tt>delim</tt> with <tt>std::move(delimiter)</tt>, and <tt>first_element</tt> with <tt>true</tt>. </blockquote>
 <b>22.6.5.2&nbsp; <tt>ostream_joiner</tt> operations&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iterator.ostream.joiner.ops</b><br/>
 <pre>template&lt;typename T>
 ostream_joiner&amp; operator=(const T&amp; value);</pre>
